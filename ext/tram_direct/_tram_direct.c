@@ -57,6 +57,51 @@ void _tram_direct_update_lagrangian_mult(
     }
 }
 
+void _dhamed_direct_get_Ref_K_i(
+    int *times, double *biased_conf_weights, int *count_matrices,
+    int *state_counts, int n_therm_states, int n_conf_states, double *R_K_i)
+{
+    int i, j, K, Ki, Kj, KMM;
+    int CCT_Kij, CKi;
+
+    /* compute R */
+    /* i =k, */
+    for(K=0; K<n_therm_states; ++K)
+    {
+        KMM = K*n_conf_states*n_conf_states;
+        for(i=0; i<n_conf_states; ++i)
+        {
+            CKi = 0;
+            Ki = K*n_conf_states + i;
+            R_K_i[Ki] = 0.0;
+            if(0 == state_counts[Ki]) continue;
+            for(j=0; j<n_conf_states; ++j)
+            {
+                CCT_Kij = count_matrices[KMM + i*n_conf_states + j];
+
+                Kj = K*n_conf_states + j;
+                if(i != j) {
+                    CKi += count_matrices[KMM + i*n_conf_states + j]; /* switched i and j */
+                    CCT_Kij += count_matrices[KMM + j*n_conf_states + i];
+                    if(0 < CCT_Kij) {
+                        /* one of the nus can be zero */
+                        /* if(lagrangian_mult[Ki]==0 && lagrangian_mult[Kj]==0) fprintf(stderr, "R:Warning nu[%d,%d]=nu[%d,%d]=0\n",K,i,K,j); */
+                        /*if(biased_conf_weights[Ki]==0) fprintf(stderr, "R:Warning Z[%d,%d]=0\n",K,i);
+                        if(biased_conf_weights[Kj]==0) fprintf(stderr, "R:Warning Z[%d,%d]=0\n",K,j); */
+                        R_K_i[Ki] -= (double)CCT_Kij / (1.0 +
+                                                     (times[Kj]/times[Ki])*
+                                                     (biased_conf_weights[Ki]/biased_conf_weights[Kj]));
+                        printf("Debugging DHAMed %f", R_K_i[Ki]);
+                    }
+                }
+            }
+            R_K_i[Ki] += state_counts[Ki] + CKi;
+            /* R_ik / Z_ik */
+            if(0 < R_K_i[Ki]) R_K_i[Ki] /= biased_conf_weights[Ki];
+        }
+    }
+}
+
 void _tram_direct_get_Ref_K_i(
     double *lagrangian_mult, double *biased_conf_weights, int *count_matrices,
     int *state_counts, int n_therm_states, int n_conf_states, double *R_K_i
@@ -161,6 +206,7 @@ void _tram_direct_update_biased_conf_weights(
         for(K=0; K<n_therm_states; ++K)
         {
             Ki = K*n_conf_states + i;
+
             new_biased_conf_weights[Ki] += bias_sequence[x * n_therm_states + K]/divisor;
             if(isnan(new_biased_conf_weights[Ki])) fprintf(stderr, "Z:Warning Z[%d,%d]=NaN (%f,%f) %d\n",K, i, bias_sequence[x * n_therm_states + K], divisor, x);
             if(isinf(new_biased_conf_weights[Ki])) fprintf(stderr, "Z:Warning Z[%d,%d]=Inf (%f,%f) %d\n",K, i, bias_sequence[x * n_therm_states + K], divisor, x);

@@ -23,4 +23,9 @@ void _tram_direct_dtram_like_update(
     double *lagrangian_mult, double *biased_conf_weights, int *count_matrices, int *state_counts, 
     int n_therm_states, int n_conf_states, double *scratch_M, int *scratch_M_int, double *new_biased_conf_weights);
 
+void _dhamed_direct_get_Ref_K_i(
+    int *times, double *biased_conf_weights, int *count_matrices,
+    int *state_counts, int n_therm_states, int n_conf_states, double *R_K_i);
+
 #endif
+
